@@ -1,0 +1,73 @@
+= Langchain4j and LocalAI with SQLCoder Model Demo
+Cédric Lamalle <https://github.com/cedric-lamalle[@cedric-lamalle]>
+
+Example demonstrating the use of SQL Generation with https://defog.ai/[Defog.ai]'s SQLCoder, passing SQL metadata to the model and executing the resulting query.
+
+CAUTION: This is demo code!
+
+== Technology Stack (buzzwords section)
+
+* https://localai.io/[LocalAI] to serve the model using https://github.com/ggerganov/llama.cpp[llama-cpp] via an OpenAPI compatible ReST api.
+* https://huggingface.co/TheBloke/sqlcoder-7B-GGUF[SQLCoder model 7B version] in GGUF format (by https://huggingface.co/TheBloke[TheBloke])
+* https://github.com/langchain4j[Langchain4j] to interact with the LocalAI server in a convenient way.
+* The good ol' https://spring.io/projects/spring-boot/[Spring Boot] to serve the ReST api for the final user and run the queries with JdbcTemplate.
+* Docker Compose to run the PostgreSQL database (Integrated with Spring Boot)
+* https://github.com/DiUS/java-faker[Java Faker] to generate test data
+
+== Setup (using Docker)
+
+Download the model in the _models_ folder. I have choosen the `Q5_K_M` version because it had better results than the `Q4_K_M`, doesn't generate useless _table expressions_. This model has less hallucinations too, i.e., inventing columns.
+
+Then start the docker container for LocalAI.
+
+[source,shell]
+----
+$ mkdir -p models
+$ curl -L https://huggingface.co/TheBloke/sqlcoder-7B-GGUF/resolve/main/sqlcoder-7b.Q5_K_M.gguf -o models/sqlcoder-7b.Q5_K_M.gguf
+----
+
+Next step is to initialize the database, running it with `docker compose` and import the sales schema:
+
+[source,shell]
+----
+$ docker compose up -d
+$ docker compose cp sales-schema.sql database:/tmp
+$ docker compose exec database psql -U sales -f /tmp/sales-schema.sql
+----
+
+== Running the application
+
+The application can be run using _Maven Spring Boot Plugin_ or in your preferred IDE.
+
+[TIP]
+====
+In the first run activate the `initial-load` profile, for instance:
+
+[source,shell]
+----
+$ mvn spring-boot:run -Dspring-boot.run.profiles=initial-load
+----
+====
+
+When the application is running you can interact with the `/api/sql-generation` endpoint.
+
+Example usage:
+
+[source,shell]
+----
+$ curl -s -X POST http://localhost:8081/api/sql-generation -H 'Content-Type: application/json'  -d '{"question": "What are the top 3 regions where we sell products?"}' | jq
+[
+  {
+    "region": "Sul",
+    "number_of_sales": 2354
+  },
+  {
+    "region": "Sudeste",
+    "number_of_sales": 2204
+  },
+  {
+    "region": "Centroeste",
+    "number_of_sales": 1892
+  }
+]
+----
