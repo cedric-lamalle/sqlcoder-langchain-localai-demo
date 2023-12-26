@@ -24,6 +24,7 @@ Then start the docker container for LocalAI.
 ----
 $ mkdir -p models
 $ curl -L https://huggingface.co/TheBloke/sqlcoder-7B-GGUF/resolve/main/sqlcoder-7b.Q5_K_M.gguf -o models/sqlcoder-7b.Q5_K_M.gguf
+$ docker run -p 8080:8080 -v $PWD/models:/models -d quay.io/go-skynet/local-ai:latest --models-path /models
 ----
 
 Next step is to initialize the database, running it with `docker compose` and import the sales schema:
